@@ -41,6 +41,16 @@ chmod +x baslat.sh
 ```
 Bu komut, kamera ile oturumu açacak, `updateSession` ile yayını canlı tutacak ve `ffmpeg` üzerinden gelen görüntüyü 0 gecikme ile `/dev/video9` sanal kamerasına akıtacaktır.
 
+## 🌐 Kamerayı Ev Wi-Fi Ağına Bağlamak (Connecting to Home Wi-Fi)
+Eğer kamerayı kendi ev ağınıza bağlamak isterseniz, kameranın gizli Android arayüzüne `scrcpy` ile erişebilirsiniz:
+1. Kamerayı USB ile bilgisayara bağlayın.
+2. Terminalden Wi-Fi ayarları menüsünü tetikleyin:
+   ```bash
+   adb shell am start -a android.settings.WIFI_SETTINGS
+   ```
+3. `scrcpy` programını çalıştırarak kameranın gizli Android ekranını bilgisayarınıza yansıtın.
+4. Ekranda açılan menüden kendi ev modeminizi seçip şifrenizi girerek bağlanın! Artık kameranız ev ağınızın bir parçasıdır.
+
 ## ⚠️ Cihazı Rootlamak (Hacking the Device)
 Eğer kameranız fabrika ayarlarına dönerse veya bu projeyi sıfırdan kuruyorsanız:
 1. `lglaf/` dizinini kullanarak cihazın seri portundan kök (root) erişimi alın.
