@@ -18,7 +18,9 @@ Adım 3 (rootlama) ve Adım 4 (ev Wi-Fi'ye bağlama) bir kere yapıldıktan sonr
 ./webcam.sh
 ```
 
-Bu script v4l2loopback'i yükler, kamerayı kontrol eder (uykudaysa uyandırmanızı ister), OSC sunucusunu tetikler, güvenlik duvarını ayarlar, yayını başlatır ve son olarak **görüntü ayarları panelini** açar: **http://localhost:5555** — buradan parlaklık, kontrast, doygunluk, keskinlik, gürültü azaltma ve gamma'yı canlı önizlemeli kaydırma çubuklarıyla ayarlayabilirsiniz. Çıkmak için terminalde `CTRL+C`.
+Bu script v4l2loopback'i yükler, kamerayı kontrol eder (uykudaysa uyandırmanızı ister), OSC sunucusunu tetikler, güvenlik duvarını ayarlar, yayını başlatır ve son olarak **görüntü ayarları panelini** açar: **http://localhost:5555** — buradan parlaklık, kontrast, doygunluk, keskinlik, gürültü azaltma, gamma, **lens açısı/kırpma** (zoom/normal/geniş) ve **kamera çözünürlüğü**'nü canlı önizlemeli kaydırma çubuklarıyla ayarlayabilirsiniz. Çıkmak için terminalde `CTRL+C`.
+
+> Her ayar değişikliği, kameranın kendi yayınının da temiz bir şekilde yeniden başlamasını gerektirir (~5-15 saniye sürebilir, bu sırada önizleme kısa süre donuk kalır). Kaydırma çubuğunu hızlı hızlı sürüklemek sorun değil — panel art arda gelen değişiklikleri tek bir yeniden başlatmada birleştirir.
 
 İlk kurulum için (rootlama dahil) aşağıdaki adımları sırayla takip edin.
 
