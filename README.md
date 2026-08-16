@@ -10,6 +10,20 @@
 
 ---
 
+## 🚀 Hızlı Başlangıç (kamera zaten rootlanmış ve ev ağına bağlıysa)
+
+Adım 3 (rootlama) ve Adım 4 (ev Wi-Fi'ye bağlama) bir kere yapıldıktan sonra, her seferinde tek komut yeterli:
+
+```bash
+./webcam.sh
+```
+
+Bu script v4l2loopback'i yükler, kamerayı kontrol eder (uykudaysa uyandırmanızı ister), OSC sunucusunu tetikler, güvenlik duvarını ayarlar, yayını başlatır ve son olarak **görüntü ayarları panelini** açar: **http://localhost:5555** — buradan parlaklık, kontrast, doygunluk, keskinlik, gürültü azaltma ve gamma'yı canlı önizlemeli kaydırma çubuklarıyla ayarlayabilirsiniz. Çıkmak için terminalde `CTRL+C`.
+
+İlk kurulum için (rootlama dahil) aşağıdaki adımları sırayla takip edin.
+
+---
+
 ## 📦 İçindekiler
 
 1. [Nasıl Çalışır?](#-nasıl-çalışır)
@@ -75,7 +89,7 @@ Yukarıdaki tablodaki paketleri kurun. Python bağımlılıkları için proje k�
 ```bash
 pip install -r requirements.txt
 ```
-> Not: `requirements.txt` içindeki `flask`, `opencv-python`, `bleak` gibi paketler bu projenin *ileride* eklenecek web paneli/hareket algılama özellikleri içindir; temel webcam akışı için sadece `requests` yeterlidir.
+> Not: `flask` ve `opencv-python` görüntü ayarları paneli (`panel.py`) için kullanılıyor. `bleak` ise henüz kullanılmayan, ileride eklenebilecek bir Bluetooth özelliği içindir. Bu paketler proje köküne oluşturulan `venv/` içine kurulur (bkz. Adım 3), sistem pip'ine değil.
 
 **Doğrulama:** Komutlar hatasız çalıştıysa bu adım tamam.
 
@@ -111,7 +125,7 @@ Bu proje, kameranın OSC sunucusunu ev ağınızdayken de açık tutabilmek içi
 3. Proje köküne bir venv oluşturup `lglaf` bağımlılıklarını kurun (Arch gibi "externally managed" dağıtımlarda sistem pip'i bunu reddeder):
    ```bash
    python3 -m venv venv
-   ./venv/bin/pip install pyusb requests cryptography
+   ./venv/bin/pip install pyusb requests cryptography flask opencv-python-headless numpy
    ```
 4. Root erişimini doğrulayın:
    ```bash
@@ -155,27 +169,21 @@ Kameranın ev ağınızdaki IP'sini (`inet ...` satırı) not edin ve `config.py
 ## Adım 5 — Yayını Başlatma (Webcam Olarak Kullanma)
 
 ```bash
-chmod +x baslat.sh
-./baslat.sh
+chmod +x webcam.sh
+./webcam.sh
 ```
 
-Bu komut sırasıyla:
-1. `enable_osc.py` ile kameraya sahte "hotspot açıldı" sinyali gönderip OSC sunucusunu (port 6624) ev ağında açtırır,
-2. `start_stream.py` ile OSC API üzerinden oturum açar ve UDP video yayınını başlatır (`camera.updateSession` ile oturumu canlı tutar),
-3. `ffmpeg` ile gelen UDP akışını 640x480 olacak şekilde merkezden kırpar ve `/dev/video9` sanal kamerasına yazar.
-
-**Eğer görüntü gelmiyorsa, önce güvenlik duvarınızı kontrol edin** — video UDP paketleri bilgisayarınıza gelen bağlantı olarak sayılır:
-```bash
-sudo ufw allow 1234/udp
-```
+Bu tek script sırasıyla: v4l2loopback'i kontrol eder, kameraya bağlanır (uykudaysa uyandırmanızı ister), uyku modunu engeller, kameranın güncel IP'sini bulur, `enable_osc.py` ile OSC sunucusunu (port 6624) tetikler, güvenlik duvarında UDP 1234'ü açar, önceki yayınları temizler, `start_stream.py` ile OSC oturumunu canlı tutar ve son olarak **görüntü ayarları panelini** (`panel.py`) açar — bu panel kendi içinde `ffmpeg`'i başlatıp UDP akışını kırpıp `/dev/video9`'a yazar.
 
 **Doğrulama:**
 ```bash
 ffplay /dev/video9
 ```
-veya herhangi bir görüntülü görüşme/kayıt uygulamasını açıp kamera listesinden **LG 360 CAM**'i seçin. Görüntü akıyorsa kurulum tamamlanmıştır. 🎉
+veya herhangi bir görüntülü görüşme/kayıt uygulamasını açıp kamera listesinden **LG 360 CAM**'i seçin. Ayrıca tarayıcıda **http://localhost:5555** açıp canlı önizleme + görüntü ayarı kaydırma çubuklarını görebilirsiniz. Görüntü akıyorsa kurulum tamamlanmıştır. 🎉
 
 Durdurmak için terminalde `CTRL+C`.
+
+> Eski `baslat.sh` hâlâ çalışır (panelsiz, sadece ham akış) ama `webcam.sh` artık önerilen yoldur.
 
 ---
 
@@ -221,7 +229,9 @@ lg_cam/
 ├── enable_osc.py            # Sahte WIFI_AP_STATE_CHANGED yayını gönderip OSC sunucusunu tetikler
 ├── start_stream.py         # camera_api.py'yi kullanıp yayını başlatan ve canlı tutan betik
 ├── disable_sleep.py         # Kameranın otomatik uyku/kapanmasını devre dışı bırakır
-├── baslat.sh                # Tüm zinciri başlatan ana betik (enable_osc → stream → ffmpeg → /dev/video9)
+├── panel.py                  # Flask görüntü ayarları paneli (localhost:5555) — ffmpeg'i yönetir
+├── webcam.sh                  # ÖNERİLEN: tüm süreci kontrol edip başlatan tek script
+├── baslat.sh                # Eski/basit başlatıcı (panelsiz, sadece ham akış → /dev/video9)
 ├── setup.sh                  # (Artık gerekli değil — kameranın kendi hotspot moduna bağlanma sihirbazıydı)
 ├── setup_network.sh           # (Artık gerekli değil — aynı amaç, komut satırı versiyonu)
 ├── busybox-armv7l              # Rootlama sırasında kameraya yüklenen statik busybox (bkz. Adım 3)
