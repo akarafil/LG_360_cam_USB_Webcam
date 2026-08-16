@@ -81,6 +81,9 @@ class Config:
     STREAM_SHARPNESS = 50           # 0-100 (keskinlik filtresi)
     STREAM_DENOISE = 0              # 0=kapalı, 1-10 (gürültü azaltma)
     STREAM_GAMMA = 100              # 50-200 (gamma düzeltme, 100=normal)
+    # Kamera çözünürlüğü (OSC previewFormat) ve lens açısı (yerel kırpma) — panel.py
+    STREAM_CAMERA_RESOLUTION = "1280x768"   # kameradan istenen preview formatı
+    STREAM_LENS_ANGLE = "normal"            # "zoom" | "normal" | "wide"
 
     # === Web Sunucu Ayarları ===
     SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")
@@ -174,7 +177,12 @@ class Config:
         try:
             with open(dosya_yolu, "r", encoding="utf-8") as f:
                 ayarlar = json.load(f)
+            # camera_ip her çalıştırmada webcam.sh tarafından tespit edilip config.py'ye
+            # yazılıyor (DHCP ile değişebilir); config.json'daki eski/durağan değer bunu
+            # ezmesin diye burada bilerek atlanıyor.
             for anahtar, deger in ayarlar.items():
+                if anahtar in ("camera_ip", "camera_port"):
+                    continue
                 anahtar_buyuk = anahtar.upper()
                 if hasattr(cls, anahtar_buyuk):
                     setattr(cls, anahtar_buyuk, deger)
@@ -215,6 +223,8 @@ class Config:
             "stream_sharpness": cls.STREAM_SHARPNESS,
             "stream_denoise": cls.STREAM_DENOISE,
             "stream_gamma": cls.STREAM_GAMMA,
+            "stream_camera_resolution": cls.STREAM_CAMERA_RESOLUTION,
+            "stream_lens_angle": cls.STREAM_LENS_ANGLE,
             "log_level": cls.LOG_LEVEL,
         }
         try:

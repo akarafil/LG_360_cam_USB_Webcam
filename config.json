@@ -1,5 +1,5 @@
 {
-  "camera_ip": "192.168.43.1",
+  "camera_ip": "192.168.1.57",
   "camera_port": 6624,
   "camera_session_id": "lgcam_securu_01",
   "camera_wifi_password": "",
@@ -24,5 +24,7 @@
   "stream_sharpness": 50,
   "stream_denoise": 0,
   "stream_gamma": 100,
+  "stream_camera_resolution": "1280x768",
+  "stream_lens_angle": "normal",
   "log_level": "INFO"
 }

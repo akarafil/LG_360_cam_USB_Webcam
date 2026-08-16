@@ -135,6 +135,24 @@ class LG360CamAPI:
         logger.warning("Capture modu değiştirilemedi, mevcut modda devam ediliyor")
         return False
 
+    def preview_format_ayarla(self, width: int, height: int, framerate: int = 24) -> bool:
+        """Kameraya belirli bir preview formatı (çözünürlük) uygular."""
+        yanit = self._komut_gonder(
+            "camera.setOptions",
+            {
+                "sessionId": self.session_id,
+                "options": {
+                    "previewFormat": {"width": width, "height": height, "framerate": framerate}
+                }
+            }
+        )
+        basarili = bool(yanit and yanit.get("state") != "error")
+        if basarili:
+            logger.info(f"Preview format ayarlandı: {width}x{height}@{framerate}fps")
+        else:
+            logger.warning(f"Preview format ayarlanamadı: {width}x{height}@{framerate}fps")
+        return basarili
+
     def _preview_format_ayarla(self) -> bool:
         """
         Preview formatını (çözünürlük + FPS) ayarlar.

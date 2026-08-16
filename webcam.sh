@@ -10,8 +10,7 @@
 #   5. OSC sunucusunu tetikleme (sahte "hotspot açıldı" sinyali)
 #   6. Güvenlik duvarında UDP 1234'ü açma
 #   7. Önceki yayınları temizleme
-#   8. Yayını başlatma
-#   9. Görüntü ayarları panelini açma (http://localhost:5555)
+#   8. Yayını başlatma ve görüntü ayarları panelini açma (http://localhost:5555)
 #
 # Kullanım: ./webcam.sh
 # ==============================================================================
@@ -29,9 +28,6 @@ MAVI='\033[0;34m'
 KALIN='\033[1m'
 NC='\033[0m'
 
-STREAM_LOG="/tmp/lgcam_stream.log"
-STREAM_PID=""
-
 adim() { echo -e "\n${MAVI}${KALIN}[Adım $1] $2${NC}"; }
 tamam() { echo -e "${YESIL}  ✓ $1${NC}"; }
 hata()  { echo -e "${KIRMIZI}  ✗ $1${NC}"; }
@@ -39,9 +35,8 @@ bilgi() { echo -e "${SARI}  $1${NC}"; }
 
 temizlik_ve_cikis() {
     echo ""
-    [ -n "$STREAM_PID" ] && kill "$STREAM_PID" 2>/dev/null
-    pkill -f "start_stream.py" 2>/dev/null
     pkill -f "panel.py" 2>/dev/null
+    pkill -f "ffmpeg.*video9" 2>/dev/null
     echo -e "${SARI}Yayın durduruldu.${NC}"
     exit 0
 }
@@ -148,23 +143,12 @@ sleep 1
 tamam "Temizlendi"
 
 # ------------------------------------------------------------------
-# Adım 8: Yayını başlatma
+# Adım 8: Yayını başlatma ve görüntü ayarları panelini açma
 # ------------------------------------------------------------------
-adim 8 "Yayın başlatılıyor"
-"$PY" start_stream.py > "$STREAM_LOG" 2>&1 &
-STREAM_PID=$!
-sleep 4
-if ! kill -0 "$STREAM_PID" 2>/dev/null; then
-    hata "start_stream.py başlamadı. Log:"
-    cat "$STREAM_LOG"
-    exit 1
-fi
-tamam "OSC oturumu canlı tutuluyor (arka plan PID $STREAM_PID)"
-
-# ------------------------------------------------------------------
-# Adım 9: Görüntü ayarları panelini açma
-# ------------------------------------------------------------------
-adim 9 "Görüntü ayarları paneli açılıyor"
+# Not: OSC oturumunu, kamera yayınını ve /dev/video9'a giden ffmpeg'i
+# artık panel.py tek başına yönetiyor (ayar değişince ikisini de temiz
+# şekilde yeniden başlatabilmek için).
+adim 8 "Yayın başlatılıyor ve görüntü ayarları paneli açılıyor"
 echo ""
 echo -e "${YESIL}${KALIN}Panel: http://localhost:${NC}${YESIL}${KALIN}5555${NC}"
 echo "Kayıtlı görüntülü görüşme/kayıt uygulamalarında 'LG 360 CAM' kamerasını seçebilirsiniz."
