@@ -18,7 +18,10 @@ class Config:
     """Uygulama yapılandırma sınıfı."""
 
     # === Kamera Ayarları ===
-    CAMERA_IP = "192.168.43.1"
+    # Not: Kamera artık kendi hotspot'u yerine ev Wi-Fi ağına bağlı çalışıyor
+    # (bkz. scripts/enable_osc.sh) — bu IP, kameranın ev ağındaki adresidir ve
+    # DHCP'ye göre değişebilir; gerekirse `adb shell ip addr show wlan0` ile kontrol edin.
+    CAMERA_IP = "192.168.1.57"
     CAMERA_PORT = 6624
     CAMERA_API_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/osc/commands/execute"
     CAMERA_INFO_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/osc/info"

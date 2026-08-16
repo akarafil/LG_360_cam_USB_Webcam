@@ -2,9 +2,6 @@ from camera_api import LG360CamAPI
 from config import Config
 import time
 
-# Wi-Fi üzerinden (orijinal IP ile) bağlanıyoruz
-Config.CAMERA_IP = "192.168.43.1"
-
 print(f"[{Config.CAMERA_IP}] Kameraya bağlanılıyor...")
 api = LG360CamAPI()
 api.tam_baslat()

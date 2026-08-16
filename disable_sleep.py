@@ -1,8 +1,8 @@
 import requests
-import json
+from config import Config
 
-IP = "192.168.1.56"
-PORT = 6624
+IP = Config.CAMERA_IP
+PORT = Config.CAMERA_PORT
 BASE_URL = f"http://{IP}:{PORT}/osc"
 
 def disable_sleep():

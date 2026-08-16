@@ -16,29 +16,32 @@
 2. [Gereksinimler](#-gereksinimler)
 3. [Adım 1 — Bağımlılıkları Kurma](#adım-1--bağımlılıkları-kurma)
 4. [Adım 2 — Sanal Webcam Cihazını Oluşturma](#adım-2--sanal-webcam-cihazını-oluşturma)
-5. [Adım 3 — Kamerayı Wi-Fi Yayın Moduna Alma](#adım-3--kamerayı-wi-fi-yayın-moduna-alma)
-6. [Adım 4 — Bilgisayarı Kamera Ağına Bağlama](#adım-4--bilgisayarı-kamera-ağına-bağlama)
+5. [Adım 3 — Kamerayı Rootlama (bir kere yapılır)](#adım-3--kamerayı-rootlama-bir-kere-yapılır)
+6. [Adım 4 — Kamerayı Ev Wi-Fi Ağına Bağlama](#adım-4--kamerayı-ev-wi-fi-ağına-bağlama)
 7. [Adım 5 — Yayını Başlatma (Webcam Olarak Kullanma)](#adım-5--yayını-başlatma-webcam-olarak-kullanma)
 8. [Sorun Giderme](#-sorun-giderme)
-9. [İleri Seviye: Rootlama ve Otomatik Bağlantı](#️-ileri-seviye-rootlama-ve-otomatik-bağlantı-opsiyonel)
+9. [Nasıl Çözüldü: OSC Sunucusunun Bluetooth'suz Tetiklenmesi](#-nasıl-çözüldü-osc-sunucusunun-bluetoothsuz-tetiklenmesi)
 10. [Proje Yapısı](#-proje-yapısı)
 
 ---
 
 ## 🔍 Nasıl Çalışır?
 
-LG 360 CAM, standart bir USB Video Class (UVC) webcam değildir — bilgisayara USB ile takıldığında sadece **şarj modunda** görünür, `/dev/video*` cihazı oluşturmaz. Ancak kamera, kendi Wi-Fi erişim noktasını (AP) açtığında Open Spherical Camera (OSC) adlı bir HTTP API üzerinden canlı görüntüyü **UDP video akışı** olarak yayınlayabilir.
+LG 360 CAM, standart bir USB Video Class (UVC) webcam değildir — bilgisayara USB ile takıldığında sadece **şarj modunda** görünür, `/dev/video*` cihazı oluşturmaz. Kamera, Open Spherical Camera (OSC) adlı bir HTTP API'ye sahip ve bunun üzerinden canlı görüntüyü **UDP video akışı** olarak yayınlayabiliyor — ama resmi olarak bunu sadece kendi Wi-Fi hotspot'unu açtığında (ve bunu genelde Bluetooth üzerinden tetiklediğinde) yapıyor.
 
-Bu proje şu zinciri kurar:
+Bu projenin bulduğu kısayol: kamerayı **rootlayıp**, "hotspot açıldı" sistem sinyalini **sahte olarak** göndererek, kamera **ev Wi-Fi ağınıza bağlıyken bile** (station modu) OSC sunucusunu açık tutmasını sağlıyoruz. Detaylı teknik açıklama için [Nasıl Çözüldü](#-nasıl-çözüldü-osc-sunucusunun-bluetoothsuz-tetiklenmesi) bölümüne bakın.
+
+Kurulan zincir:
 
 ```
-LG 360 CAM  --(Wi-Fi AP)-->  Bilgisayar  --(OSC API ile başlat)-->  UDP video akışı
-    --(ffmpeg ile kırp/dönüştür)-->  v4l2loopback  -->  /dev/video9 (sanal webcam)
+LG 360 CAM (ev Wi-Fi ağınızda) --(sahte "hotspot açıldı" sinyali)--> OSC API açılır
+    --(OSC API ile _startPreview)--> UDP video akışı --(ffmpeg ile kırp/dönüştür)-->
+    v4l2loopback --> /dev/video9 (sanal webcam)
 ```
 
 `/dev/video9` oluştuktan sonra Linux'taki **her uygulama** (tarayıcı görüntülü görüşme, OBS, Zoom, `cheese` vb.) bunu normal bir webcam gibi seçebilir.
 
-USB kablosu bu senaryoda sadece **güç/şarj** için kullanılır; veri her zaman Wi-Fi üzerinden gider.
+USB kablosu bu senaryoda sadece **güç** için kullanılır (kamera pilini boşaltmasın diye); veri hep Wi-Fi üzerinden, ev ağınız içinde gider — Bluetooth'a hiç gerek yok.
 
 ---
 
@@ -46,21 +49,23 @@ USB kablosu bu senaryoda sadece **güç/şarj** için kullanılır; veri her zam
 
 ### Donanım
 - LG 360 CAM (LG-R105)
-- Bilgisayarda bir Wi-Fi kartı (kameraya bağlanmak için)
-- USB kablosu (kamerayı şarjda/açık tutmak için, opsiyonel ama önerilir)
+- Bilgisayar, kameranızla **aynı ev Wi-Fi/LAN ağında** (kendisi Wi-Fi ile de Ethernet ile de bağlı olabilir — kamerayla aynı ağda olması yeterli)
+- USB kablosu (kamerayı sürekli açık/şarjlı tutmak için önerilir; veri için gerekli değil)
 
 ### Yazılım (Linux)
 | Araç | Kurulum (Arch/CachyOS) | Kurulum (Debian/Ubuntu) |
 |---|---|---|
 | ffmpeg | `sudo pacman -S ffmpeg` | `sudo apt install ffmpeg` |
 | v4l2loopback | `sudo pacman -S v4l2loopback-dkms` | `sudo apt install v4l2loopback-dkms v4l2loopback-utils` |
-| NetworkManager (`nmcli`) | `sudo pacman -S networkmanager` | `sudo apt install network-manager` |
+| adb (android-tools) | `sudo pacman -S android-tools` | `sudo apt install android-tools-adb` |
 | Python 3 + `requests` | `sudo pacman -S python python-requests` | `sudo apt install python3 python3-requests` |
 
 Kurulumdan sonra her birinin var olduğunu doğrulayın:
 ```bash
-ffmpeg -version && v4l2-ctl --version && nmcli --version && python3 -c "import requests"
+ffmpeg -version && v4l2-ctl --version && adb --version && python3 -c "import requests"
 ```
+
+> **Güvenlik duvarı notu:** Eğer `ufw` (veya başka bir güvenlik duvarı) kullanıyorsanız, video akışı UDP paket olarak bilgisayarınıza geleceği için gelen bağlantılara varsayılan `deny` politikası akışı sessizce engeller. Adım 5'te bunu nasıl açacağınız anlatılıyor.
 
 ---
 
@@ -93,37 +98,57 @@ v4l2-ctl --list-devices
 
 ---
 
-## Adım 3 — Kamerayı Wi-Fi Yayın Moduna Alma
+## Adım 3 — Kamerayı Rootlama (bir kere yapılır)
 
-1. LG 360 CAM'in **Güç düğmesine** basarak cihazı açın.
-2. Cihaz açıldıktan sonra **Güç Düğmesi ve Çekim (Deklanşör) Düğmesine aynı anda çift tıklayın**.
-3. Kameranın üzerindeki Wi-Fi ışığının yanıp söndüğünü/yandığını görün — bu, kameranın kendi Wi-Fi ağını (`LGR105_XXXXXX` gibi bir SSID) yayınlamaya başladığı anlamına gelir.
+Bu proje, kameranın OSC sunucusunu ev ağınızdayken de açık tutabilmek için **root erişimi** gerektirir (neden gerektiğini [aşağıda](#-nasıl-çözüldü-osc-sunucusunun-bluetoothsuz-tetiklenmesi) anlatıyoruz). Bu adım sadece **bir kere** yapılır; kalıcıdır.
 
-**Doğrulama:** Telefonunuzun veya bilgisayarınızın Wi-Fi ağ listesinde `LGR105_` ile başlayan bir ağ görünmeli.
-
----
-
-## Adım 4 — Bilgisayarı Kamera Ağına Bağlama
-
-Otomatik ve interaktif kurulum betiğini kullanın:
-```bash
-sudo bash setup.sh
-```
-Bu betik sizden sırasıyla ister:
-- Kullanılacak Wi-Fi kartını seçmenizi,
-- Kamera ağını taramasını ve bulduğunda bağlanmasını (şifre genelde `00` + SSID'nin son 6 hanesi, betik bunu otomatik dener),
-- İnternete çıkan başka bir arayüz varsa (ör. Ethernet) onunla NAT köprüsü kurmasını (opsiyonel, sadece uzaktan erişim istiyorsanız gerekli).
-
-**Manuel bağlanmak isterseniz:**
-```bash
-nmcli dev wifi connect "LGR105_XXXXXX" password "00XXXXXX" ifname wlan0
-```
+1. Kamerayı **Download/LAF moduna** alın (düğme kombinasyonu cihaza göre değişir — kendi kameranızda hangisi olduğunu bulup burayı güncelleyin) ve USB ile bilgisayara bağlayın.
+2. `lglaf/rules.d/42-usb-lglaf.rules` dosyasını udev kurallarına ekleyin ki cihaza root olmadan erişilebilsin:
+   ```bash
+   sudo cp lglaf/rules.d/42-usb-lglaf.rules /etc/udev/rules.d/
+   sudo udevadm control --reload-rules && sudo udevadm trigger
+   ```
+3. Proje köküne bir venv oluşturup `lglaf` bağımlılıklarını kurun (Arch gibi "externally managed" dağıtımlarda sistem pip'i bunu reddeder):
+   ```bash
+   python3 -m venv venv
+   ./venv/bin/pip install pyusb requests cryptography
+   ```
+4. Root erişimini doğrulayın:
+   ```bash
+   ./venv/bin/python lglaf/lglaf.py --cr -c "id"
+   ```
+   `uid=0(root) gid=0(root)` dönmeli. (`--cr` bayrağı zorunlu — bu olmadan `LAF_ERROR_ACCESS_DENIED` alırsınız.)
+5. Kalıcı bir root shell (backdoor) kurun — cihaz her açıldığında otomatik başlayan, `nc` ile dinleyen bir root kabuğu:
+   ```bash
+   ./venv/bin/python lglaf/lglaf.py --cr -c "echo '(/data/local/tmp/busybox nc -lk -p 9999 -e /system/bin/sh) &' >> /system/bin/install-recovery.sh"
+   ```
+   (`busybox-armv7l` daha önce cihaza `/data/local/tmp/busybox` olarak kopyalanmış olmalı — `dump-file.py`/`lglaf.py` ile push edin.)
+6. Kamerayı güç düğmesiyle kapatıp açarak normal Android moduna döndürün.
 
 **Doğrulama:**
 ```bash
-ping 192.168.43.1
+adb devices -l          # cihazı görmeli (model:LG_R105)
+adb shell id             # uid=2000(shell) — normal, root için 9999 portu kullanılacak
 ```
-Kameradan yanıt almalısınız. Bu IP, kameranın OSC API adresidir (`config.py` içinde `CAMERA_IP` olarak tanımlı).
+
+> Bu adım geri alınması nispeten zor bir sistem-dosyası değişikliğidir (`/system/bin/install-recovery.sh`e yazar). Cihazı donanımsal olarak bozma riski düşük, ama factory reset'e kadar bu değişiklik kalıcıdır.
+
+---
+
+## Adım 4 — Kamerayı Ev Wi-Fi Ağına Bağlama
+
+Kameranın gizli Android arayüzüne `scrcpy` ile erişip ev Wi-Fi ağınıza bağlayın:
+```bash
+adb shell am start -a android.settings.WIFI_SETTINGS
+scrcpy
+```
+Açılan ekrandan ev ağınızı seçip şifrenizi girin. Bu da **bir kere** yapılır — kamera bu ağı hatırlar ve sonraki açılışlarda otomatik bağlanır.
+
+**Doğrulama:**
+```bash
+adb shell ip addr show wlan0
+```
+Kameranın ev ağınızdaki IP'sini (`inet ...` satırı) not edin ve `config.py` içindeki `CAMERA_IP` değerini buna göre güncelleyin (DHCP ile değişebilir).
 
 ---
 
@@ -135,8 +160,14 @@ chmod +x baslat.sh
 ```
 
 Bu komut sırasıyla:
-1. `start_stream.py` ile kameraya OSC API üzerinden bağlanır, oturum açar ve UDP video yayınını başlatır (`camera.updateSession` ile oturumu canlı tutar),
-2. `ffmpeg` ile gelen UDP akışını 640x480 olacak şekilde merkezden kırpar ve `/dev/video9` sanal kamerasına yazar.
+1. `enable_osc.py` ile kameraya sahte "hotspot açıldı" sinyali gönderip OSC sunucusunu (port 6624) ev ağında açtırır,
+2. `start_stream.py` ile OSC API üzerinden oturum açar ve UDP video yayınını başlatır (`camera.updateSession` ile oturumu canlı tutar),
+3. `ffmpeg` ile gelen UDP akışını 640x480 olacak şekilde merkezden kırpar ve `/dev/video9` sanal kamerasına yazar.
+
+**Eğer görüntü gelmiyorsa, önce güvenlik duvarınızı kontrol edin** — video UDP paketleri bilgisayarınıza gelen bağlantı olarak sayılır:
+```bash
+sudo ufw allow 1234/udp
+```
 
 **Doğrulama:**
 ```bash
@@ -152,33 +183,28 @@ Durdurmak için terminalde `CTRL+C`.
 
 | Belirti | Olası Sebep / Çözüm |
 |---|---|
-| `setup.sh`: "Sistemde hiçbir WiFi kartı bulunamadı" | `nmcli device` ile Wi-Fi kartınızın görünüp görünmediğini kontrol edin, sürücü eksik olabilir. |
-| Kamera ağı taramada çıkmıyor | Adım 3'ü tekrarlayın (çift tık yeterince hızlı olmayabilir), kamera bataryasını/şarjını kontrol edin. |
-| `nmcli dev wifi connect` şifre hatası veriyor | SSID'nin tam son 6 hanesini kontrol edip şifreyi `00XXXXXX` formatında elle girin. |
-| `ping 192.168.43.1` yanıt vermiyor | Bilgisayar başka bir ağa (ör. Ethernet varsayılan rotası) öncelik veriyor olabilir; `ip route` ile kontrol edin. |
-| `ffplay /dev/video9` siyah ekran / görüntü yok | Kamera "video" capture moduna geçemiyor olabilir; `camera_api.py` içindeki `preview_format_listele()` ile desteklenen formatları loglayın. |
+| `adb devices` cihazı göstermiyor | Kamera uykuda olabilir (USB "Charge mode"a düşer) — güç düğmesine kısa basıp uyandırın. Kalıcı çözüm: `adb shell settings put system screen_off_timeout 2147483647` |
+| `enable_osc.py`: "Root backdoor'a bağlanılamadı" | Adım 3 (rootlama + backdoor) yapılmamış veya kamera farklı bir IP'de; `config.py`'deki `CAMERA_IP`'yi kontrol edin. |
+| OSC sunucusu (port 6624) hâlâ açılmıyor | `adb shell netstat -an \| grep 6624` ile kontrol edin; `adb logcat \| grep CCSCameraApp` ile hata mesajlarına bakın. |
+| `ffplay /dev/video9` siyah ekran / görüntü yok | Muhtemelen güvenlik duvarı UDP:1234'ü engelliyor (`sudo ufw allow 1234/udp`) — bkz. Adım 5. |
 | Video donuk/çok düşük FPS | Kamera varsayılanda 1 FPS preview gönderebilir; `camera_api.py` bunu `captureMode=video` ayarıyla düzeltmeye çalışır, loglarda hangi modun tutunduğunu kontrol edin. |
-| Kamera birkaç dakika sonra kapanıyor | `python3 disable_sleep.py` çalıştırarak otomatik uyku/kapanmayı devre dışı bırakın (her açılışta tekrar gerekebilir, kalıcı çözüm için aşağıdaki "İleri Seviye" bölümüne bakın). |
+| Kamera birkaç dakika sonra kapanıyor / bağlantı kopuyor | Cihaz otomatik uykuya dalıyor. `python3 disable_sleep.py` (OSC açıkken) veya `adb shell settings put system screen_off_timeout 2147483647` ile kalıcı olarak engelleyin. |
 
 ---
 
-## ⚠️ İleri Seviye: Rootlama ve Otomatik Bağlantı (Opsiyonel)
+## 🔬 Nasıl Çözüldü: OSC Sunucusunun Bluetooth'suz Tetiklenmesi
 
-Yukarıdaki adımlar **her açılışta manuel** olarak kameranın Wi-Fi moduna alınmasını gerektirir. Kamerayı kalıcı bir güvenlik kamerası gibi kullanmak isteyenler için `lglaf/` aracıyla cihaza kök (root) erişimi alıp, cihaz her açıldığında otomatik Wi-Fi'ye bağlanan bir betik enjekte etmek mümkündür.
+Bu bölüm, projenin en kritik bulgusunu belgeliyor — ilerleyen bakımlar için.
 
-**Bu adım geri alınması zor / riskli bir işlemdir, sadece temel webcam akışını (Adım 1-5) test edip çalıştığından emin olduktan sonra deneyin.**
+Kameranın OSC sunucusunu barındıran uygulama (`com.lge.camera.ccs`, APK: `/system/priv-app/LGOSCCameraApp/`) `adb pull` ile indirilip (`strings`, `dumpsys package r`) incelendiğinde, `CameraControlService`'in standart Android sistem yayını **`android.net.wifi.WIFI_AP_STATE_CHANGED`**'ı dinlediği görüldü — yani OSC sunucusu (port 6624), Android'e "hotspot'um açıldı" dedirten bu yayın geldiğinde başlıyor. Kamera ev ağına (station modu) bağlıyken bu yayın hiç tetiklenmiyor, dolayısıyla port 6624 hiç açılmıyor.
 
-1. `lglaf/` dizinindeki araçla cihazın Download/LAF modundan kök erişimi alın (bkz. `lglaf/README.md`).
-2. `busybox-armv7l` ve gerekli araçları cihaza kopyalayın.
-3. `/system/bin/install-recovery.sh` içine, cihaz açıldığında otomatik Wi-Fi bağlantısını tetikleyen bir komut dosyası ekleyin.
-4. Cihazı ev Wi-Fi ağınıza bağlamak için `scrcpy` ile kameranın gizli Android ekranına erişebilirsiniz:
-   ```bash
-   adb shell am start -a android.settings.WIFI_SETTINGS
-   scrcpy
-   ```
-   Açılan ekrandan ev ağınızı seçip bağlanın.
+**Çözüm:** Root shell üzerinden, gerçek bir hotspot açmadan, sadece bu yayının kendisini sahte parametrelerle göndermek:
+```bash
+am broadcast -a android.net.wifi.WIFI_AP_STATE_CHANGED --ei wifi_state 13 --ei previous_wifi_state 12
+```
+(`wifi_state=13` → `WIFI_AP_STATE_ENABLED`.) Bu, uygulamayı "hotspot gerçekten açıldı" sanmaya kandırıyor ve OSC sunucusunu ev ağı IP'sinde açık tutuyor — kamera station modunda kalırken. `enable_osc.py` bu komutu otomatikleştirir.
 
-Bu bölüm henüz uçtan uca doğrulanmadı — ilerleyen adımlarda bu README ve `log.md` güncellenecek.
+Video akışı tarafında da (`camera._startPreview`), `logcat`'te görülen `AllMightyServer`/`LSService` günlükleri akışın hedef IP'yi (`clientIP`) OSC isteğini yapan bilgisayarın IP'sinden doğru şekilde aldığını ve `LSServer.apk` içine gömülü bir `ffmpeg` ikili dosyasıyla UDP:1234 üzerinden gerçekten yayın yaptığını doğruladı — ekstra bir "dummy AP" ağ numarasına gerek kalmadı, sadece bu tek sistem yayınının sahtesi yeterli.
 
 ---
 
@@ -192,12 +218,14 @@ lg_cam/
 ├── config.py             # Merkezi yapılandırma (kamera IP, port, stream ayarları...)
 ├── config.json            # config.py için kullanıcı override'ları
 ├── camera_api.py           # LG 360 CAM OSC API istemcisi (oturum aç, yayın başlat/durdur)
+├── enable_osc.py            # Sahte WIFI_AP_STATE_CHANGED yayını gönderip OSC sunucusunu tetikler
 ├── start_stream.py         # camera_api.py'yi kullanıp yayını başlatan ve canlı tutan betik
 ├── disable_sleep.py         # Kameranın otomatik uyku/kapanmasını devre dışı bırakır
-├── baslat.sh                # Tüm zinciri başlatan ana betik (stream + ffmpeg → /dev/video9)
-├── setup.sh                  # İnteraktif Wi-Fi bağlantı + NAT köprüsü sihirbazı
-├── setup_network.sh           # setup.sh'nin komut satırından çalıştırılabilen versiyonu
-├── busybox-armv7l              # Rootlama sonrası kameraya yüklenecek statik busybox (ileri seviye)
+├── baslat.sh                # Tüm zinciri başlatan ana betik (enable_osc → stream → ffmpeg → /dev/video9)
+├── setup.sh                  # (Artık gerekli değil — kameranın kendi hotspot moduna bağlanma sihirbazıydı)
+├── setup_network.sh           # (Artık gerekli değil — aynı amaç, komut satırı versiyonu)
+├── busybox-armv7l              # Rootlama sırasında kameraya yüklenen statik busybox (bkz. Adım 3)
+├── venv/                        # lglaf/enable_osc.py için Python venv (git'e dahil değil)
 └── lglaf/                       # LG cihazlarında Download/LAF modu üzerinden root erişim aracı
 ```
 

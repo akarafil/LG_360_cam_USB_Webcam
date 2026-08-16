@@ -10,6 +10,9 @@ echo "==================================="
 echo "Önceki yayınlar temizleniyor..."
 killall ffmpeg 2>/dev/null
 
+echo "OSC sunucusu (kamera ev ağındayken) tetikleniyor..."
+python3 enable_osc.py || { echo "OSC sunucusu açılamadı, çıkılıyor."; exit 1; }
+
 echo "Kamera API'sine bağlanılıyor ve yayın başlatılıyor..."
 # Python betiğini arkaplanda çalıştır (oturumu canlı tutması için)
 python3 start_stream.py &
