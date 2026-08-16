@@ -24,7 +24,7 @@ from config import Config
 app = Flask(__name__)
 
 VIDEO_DEVICE = "/dev/video9"
-UDP_SOURCE = "udp://@:1234?reuse=1"
+UDP_SOURCE = "udp://@:1234?reuse=1&fifo_size=1000000&overrun_nonfatal=1"
 
 _ffmpeg_proc = None
 _ffmpeg_lock = threading.Lock()
@@ -60,8 +60,6 @@ def _start_ffmpeg():
         "-fflags", "nobuffer",
         "-flags", "low_delay",
         "-flags2", "fast",
-        "-probesize", "32",
-        "-analyzeduration", "0",
         "-i", UDP_SOURCE,
         "-threads", "1",
         "-vf", _build_filter_chain(),
@@ -80,6 +78,16 @@ def _restart_ffmpeg():
             except subprocess.TimeoutExpired:
                 _ffmpeg_proc.kill()
         _start_ffmpeg()
+
+
+def _watchdog():
+    """UDP akışı bozulup ffmpeg çökerse otomatik yeniden başlatır."""
+    while True:
+        time.sleep(3)
+        with _ffmpeg_lock:
+            if _ffmpeg_proc is not None and _ffmpeg_proc.poll() is not None:
+                print("[watchdog] ffmpeg beklenmedik şekilde durdu, yeniden başlatılıyor...")
+                _start_ffmpeg()
 
 
 SETTINGS = {
@@ -186,6 +194,7 @@ def preview():
 if __name__ == "__main__":
     Config.dosyadan_yukle()
     _start_ffmpeg()
+    threading.Thread(target=_watchdog, daemon=True).start()
     try:
         app.run(host=Config.WEB_HOST, port=Config.WEB_PORT, threaded=True)
     finally:
