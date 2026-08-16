@@ -21,7 +21,7 @@
   "stream_brightness": 50,
   "stream_contrast": 50,
   "stream_saturation": 50,
-  "stream_sharpness": 70,
+  "stream_sharpness": 50,
   "stream_denoise": 0,
   "stream_gamma": 100,
   "log_level": "INFO"
