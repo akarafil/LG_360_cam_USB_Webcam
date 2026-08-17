@@ -21,6 +21,10 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 PY="$DIR/venv/bin/python"
 
+# Kameranın IP'sini otomatik bulmak yerine elle girmek isterseniz
+# aşağıya yazın (örn: "192.168.1.57"). Boş bırakılırsa otomatik bulunur.
+MANUEL_KAMERA_IP=""
+
 KIRMIZI='\033[0;31m'
 YESIL='\033[0;32m'
 SARI='\033[0;33m'
@@ -91,10 +95,15 @@ tamam "Uyku modu engellendi"
 # Adım 4: Kameranın ev ağı IP'si
 # ------------------------------------------------------------------
 adim 4 "Kameranın ev ağındaki IP'si kontrol ediliyor"
-CAMERA_IP=$(adb shell ip addr show wlan0 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
-if [ -z "$CAMERA_IP" ]; then
-    hata "Kamera Wi-Fi IP'si alınamadı. Kameranın ev ağınıza bağlı olduğundan emin olun (README Adım 4)."
-    exit 1
+if [ -n "$MANUEL_KAMERA_IP" ]; then
+    CAMERA_IP="$MANUEL_KAMERA_IP"
+    bilgi "Elle girilen IP kullanılıyor: $CAMERA_IP"
+else
+    CAMERA_IP=$(adb shell ip addr show wlan0 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
+    if [ -z "$CAMERA_IP" ]; then
+        hata "Kamera Wi-Fi IP'si alınamadı. Kameranın ev ağınıza bağlı olduğundan emin olun (README Adım 4)."
+        exit 1
+    fi
 fi
 YAPILANDIRILAN_IP=$(PY -c "from config import Config; print(Config.CAMERA_IP)" 2>/dev/null)
 if [ "$CAMERA_IP" != "$YAPILANDIRILAN_IP" ]; then
